@@ -1,6 +1,8 @@
 package org.innovecs.config;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.innovecs.models.Box;
 import org.innovecs.services.FileService;
@@ -27,6 +29,11 @@ public class Main implements CommandLineRunner {
 	@Override
 	public void run(String... args) {
 		List<Box> boxs = fileService.readBoxFile("src\\main\\resources\\input.csv");
-		boxs.forEach(System.out::println);
+		Map<String, List<Box>> boxesByDestinations = boxs.stream()
+				.collect(Collectors.groupingBy(d -> d.getDestination()));
+		boxesByDestinations.forEach((k, v) -> {
+			System.out.println("Dest " + k);
+			v.forEach(System.out::println);
+		});
 	}
 }
