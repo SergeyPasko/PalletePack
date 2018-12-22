@@ -44,19 +44,23 @@ public class FileServiceImpl implements FileService {
 	private void readBoxFromFileLine(String line, ArrayList<Box> boxs) {
 		String[] values = line.split(Constants.CSV_FILE_DELIMETR);
 		if (values.length != 4) {
-			LOG.warn("Incorrect line in input file {}", line);
+			LOG.warn("Incorrect line in input file: {}", line);
 			return;
 		}
 		int weight = 0;
 		BoxType boxType;
 		try {
 			weight = Integer.parseInt(values[2]);
-			boxType = BoxType.valueOf(values[1].toUpperCase());
+			String boxTypeName = values[1].toUpperCase();
+			if (BoxType.PALETTE.name().equals(boxTypeName)) {
+				throw new IllegalArgumentException();
+			}
+			boxType = BoxType.valueOf(boxTypeName);
 		} catch (NumberFormatException nfe) {
-			LOG.warn("Incorrect weight in line {}", line);
+			LOG.warn("Incorrect weight in line: {}", line);
 			return;
 		} catch (IllegalArgumentException iae) {
-			LOG.warn("Incorrect box type in line {}", line);
+			LOG.warn("Incorrect box type in line: {}", line);
 			return;
 		}
 		boxs.add(new Box(values[0], boxType, weight, values[3]));

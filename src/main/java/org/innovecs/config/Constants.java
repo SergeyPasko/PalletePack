@@ -18,8 +18,8 @@ public class Constants {
 
 	public static int PALLETE_WIDTH = 800;
 	public static int PALLETE_LENGTH = 1200;
-	public static int PALLETE_MAXHEIGHT = 100;
-	public static int PALLETE_MAXWEIGHT = 100;
+	public static int PALLETE_MAXHEIGHT = 1500;
+	public static int PALLETE_MAXWEIGHT = 1000;
 
 	public static String CSV_FILE_DELIMETR = ";";
 }

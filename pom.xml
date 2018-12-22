@@ -1,12 +1,11 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>PalletePack</groupId>
 	<artifactId>PalletePack</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<properties>
-		<java.version>11</java.version>
+		<java.version>8</java.version>
 		<log4j.version>2.11.1</log4j.version>
 		<disruptor.version>3.3.0</disruptor.version>
 		<spring-boot-dependencies.version>2.0.5.RELEASE</spring-boot-dependencies.version>
@@ -48,4 +47,5 @@
 		</dependency>
 
 	</dependencies>
+
 </project>

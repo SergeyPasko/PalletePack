@@ -7,7 +7,6 @@ public class Box {
 	private String name;
 	private BoxType boxType;
 	private int weight;
-	private boolean hasInclude;
 	private String destination;
 
 	public Box(String name, BoxType boxType, int weight, String destination) {
@@ -25,14 +24,6 @@ public class Box {
 		this.weight = weight;
 	}
 
-	public boolean isHasInclude() {
-		return hasInclude;
-	}
-
-	public void setHasInclude(boolean hasInclude) {
-		this.hasInclude = hasInclude;
-	}
-
 	public String getName() {
 		return name;
 	}
@@ -47,8 +38,8 @@ public class Box {
 
 	@Override
 	public String toString() {
-		return "Box [name=" + name + ", boxType=" + boxType + ", weight=" + weight + ", hasInclude=" + hasInclude
-				+ ", destination=" + destination + "]";
+		return "Box [name=" + name + ", boxType=" + boxType + ", weight=" + weight + ", destination=" + destination
+				+ "]";
 	}
 
 }

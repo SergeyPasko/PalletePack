@@ -13,9 +13,10 @@
 
 
 	<Loggers>
-
-		<Root level="DEBUG" includeLocation="true">
-			<AppenderRef ref="STDOUT" level="DEBUG" />
+		        
+		<AsyncLogger name="org.springframework" level="error" />
+		<Root level="debug" additivity="false">
+			<AppenderRef ref="STDOUT" level="debug" />
 		</Root>
 
 	</Loggers>
