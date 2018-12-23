@@ -1,23 +1,19 @@
 package org.innovecs.models;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @author spasko
  */
 public class Pallete {
 
 	private String name;
-	private int width;
-	private int length;
-	private int maxHeight;
-	private int maxWeight;
 	private String destination;
+	private List<BoxWrapper> boxWrappers = new ArrayList<>();
 
-	public Pallete(String name, int width, int length, int maxHeight, int maxWeight, String destination) {
+	public Pallete(String name, String destination) {
 		this.name = name;
-		this.width = width;
-		this.length = length;
-		this.maxHeight = maxHeight;
-		this.maxWeight = maxWeight;
 		this.destination = destination;
 	}
 
@@ -37,20 +33,12 @@ public class Pallete {
 		this.destination = destination;
 	}
 
-	public int getWidth() {
-		return width;
+	public List<BoxWrapper> getBoxWrappers() {
+		return boxWrappers;
 	}
 
-	public int getLength() {
-		return length;
-	}
-
-	public int getMaxHeight() {
-		return maxHeight;
-	}
-
-	public int getMaxWeight() {
-		return maxWeight;
+	public void setBoxWrappers(List<BoxWrapper> boxWrappers) {
+		this.boxWrappers = boxWrappers;
 	}
 
 }

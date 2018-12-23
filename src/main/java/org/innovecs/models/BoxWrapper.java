@@ -1,16 +1,19 @@
 package org.innovecs.models;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 /**
  * @author spasko
  */
-public class BoxWrapper extends Box {
+public class BoxWrapper extends Box implements Comparable<BoxWrapper> {
 
 	private List<BoxWrapper> boxsInternal = new ArrayList<>();
 	private boolean included;
 	private boolean virtual;
+	private int[] xyz = new int[6];
 
 	public BoxWrapper(String name, BoxType boxType, int weight, String destination) {
 		super(name, boxType, weight, destination);
@@ -46,7 +49,22 @@ public class BoxWrapper extends Box {
 
 	@Override
 	public String toString() {
-		return "BoxWrapper [boxsInternal=" + boxsInternal + ", included=" + included + ", virtual=" + virtual + "]";
+		return "BoxWrapper [boxsInternal=" + boxsInternal + ", included=" + included + ", virtual=" + virtual + ", xyz="
+				+ Arrays.toString(xyz) + ", toString()=" + super.toString() + "]";
+	}
+
+	public int[] getXyz() {
+		return xyz;
+	}
+
+	public void setXyz(int[] xyz) {
+		this.xyz = xyz;
+	}
+
+	@Override
+	public int compareTo(BoxWrapper o) {
+		return Comparator.comparing(BoxWrapper::isVirtual)
+				.thenComparing(Comparator.comparing(BoxWrapper::getWeight).reversed()).compare(this, o);
 	}
 
 }
