@@ -54,7 +54,7 @@ public class FileServiceImpl implements FileService {
 		try {
 			weight = Integer.parseInt(values[2]);
 			String boxTypeName = values[1].toUpperCase();
-			if (BoxType.PALETTE.name().equals(boxTypeName)) {
+			if (!boxTypeName.matches("^TYPE[123]")) {
 				throw new IllegalArgumentException();
 			}
 			boxType = BoxType.valueOf(boxTypeName);

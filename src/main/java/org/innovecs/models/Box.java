@@ -36,6 +36,18 @@ public class Box {
 		return destination;
 	}
 
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public void setDestination(String destination) {
+		this.destination = destination;
+	}
+
+	public void setBoxType(BoxType boxType) {
+		this.boxType = boxType;
+	}
+
 	@Override
 	public String toString() {
 		return "Box [name=" + name + ", boxType=" + boxType + ", weight=" + weight + ", destination=" + destination

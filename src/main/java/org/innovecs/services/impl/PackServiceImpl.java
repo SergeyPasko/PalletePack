@@ -1,9 +1,11 @@
 package org.innovecs.services.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,13 +29,18 @@ public class PackServiceImpl implements PackService {
 	private OptimalPackStrategy optimalPackStrategy;
 
 	@Override
-	public void calculatePack(List<Box> boxs) {
-		// rotate
-		optimalPackStrategy.selectOptimalVectorForInternalBox(BoxType.PALETTE, BoxType.TYPE1);
-		optimalPackStrategy.selectOptimalVectorForInternalBox(BoxType.TYPE1, BoxType.TYPE2);
-		optimalPackStrategy.selectOptimalVectorForInternalBox(BoxType.TYPE2, BoxType.TYPE3);
+	public List<BoxWrapper> calculatePack(List<Box> boxs) {
 
 		// multiplexing to TYPE1
+		List<BoxWrapper> boxsWrappers = multiplexBoxsToType1(boxs);
+
+		// calculate need pallets count
+		int palletsNeed = totalPalletsNeed(boxsWrappers);
+
+		return Arrays.asList(packToPallets(boxsWrappers, palletsNeed));
+	}
+
+	private List<BoxWrapper> multiplexBoxsToType1(List<Box> boxs) {
 		List<BoxWrapper> boxsWrappers = boxs.stream().map(BoxWrapper::new).collect(Collectors.toList());
 		boxsWrappers.addAll(multiplexBoxToBiggestLevel(boxsWrappers, BoxType.TYPE3, BoxType.TYPE2));
 		boxsWrappers.addAll(multiplexBoxToBiggestLevel(boxsWrappers, BoxType.TYPE2, BoxType.TYPE1));
@@ -42,59 +49,106 @@ public class PackServiceImpl implements PackService {
 		Collections.sort(boxsWrappers);
 		LOG.debug("Before multiplexing was {} Type1, after {} Type1",
 				boxs.stream().filter(bw -> BoxType.TYPE1.equals(bw.getBoxType())).count(), boxsWrappers.size());
+		return boxsWrappers;
+	}
 
-		// calculate need pallets
+	private int totalPalletsNeed(List<BoxWrapper> boxsWrappers) {
 		int totalBoxsWeight = boxsWrappers.stream().mapToInt(BoxWrapper::getWeight).sum();
 		LOG.debug("Total weight: " + totalBoxsWeight);
 		int palletsNeed = (int) Math.round(0.499 + Math.max((double) totalBoxsWeight / Constants.PALLETE_MAXHEIGHT,
 				(double) boxsWrappers.size() / BoxType.PALETTE.getCapacity()));
 		LOG.debug("Total palletes need: " + palletsNeed);
-
-		//
-		packToPallets(boxsWrappers, palletsNeed);
+		return palletsNeed;
 	}
 
-	private void packToPallets(List<BoxWrapper> boxsWrappers, int palletsNeed) {
+	private BoxWrapper[] packToPallets(List<BoxWrapper> boxsWrappers, int palletsNeed) {
 		BoxWrapper[] pallets = buildPallets(boxsWrappers, palletsNeed);
-
 		int oneLayerType1Capacity = BoxType.PALETTE.getTotalPozitionOnLength()
 				* BoxType.PALETTE.getTotalPozitionOnWidth();
-		int totalType1Layers = boxsWrappers.size() / oneLayerType1Capacity;
-		int unfullType1LayerBoxsCount = boxsWrappers.size() % oneLayerType1Capacity;
-		if (unfullType1LayerBoxsCount == 0) {
-			LOG.debug("Ideal myltiplexing TYPE1");
-			int intransitiveLayers = totalType1Layers / palletsNeed;
-			int currentZ = 0;
-			for (int i = 0; i < intransitiveLayers; i++) {
-				List<BoxWrapper> subListLayer = boxsWrappers.subList(i * oneLayerType1Capacity * palletsNeed,
-						(i + 1) * oneLayerType1Capacity * palletsNeed);
-				Collections.shuffle(subListLayer);
-				for (int j = 0; j < palletsNeed; j++) {
-					List<BoxWrapper> subListLayerPallete = boxsWrappers.subList(j * oneLayerType1Capacity,
-							(j + 1) * oneLayerType1Capacity);
-					calculateCoordinats(pallets[j], currentZ, subListLayerPallete);
 
-					LOG.debug("Pallete: {} layer: {}", pallets[j].getName(), i + 1);
-					subListLayerPallete.stream()
-							.map(bw -> " x1:" + bw.getXyz()[0] + " y1:" + bw.getXyz()[1] + " z1:" + bw.getXyz()[2]
-									+ " x2:" + bw.getXyz()[3] + " y2:" + bw.getXyz()[4] + " z2:" + bw.getXyz()[5])
-							.forEach(LOG::debug);
-				}
-				currentZ += BoxType.TYPE1.getHeight();
+		int currentZ = 0;
+		layers: for (int layer = 0;; layer++) {
+			int startSubListIndex = layer * oneLayerType1Capacity * palletsNeed;
+			int endSubListIndex = (layer + 1) * oneLayerType1Capacity * palletsNeed - 1;
+			if (endSubListIndex < boxsWrappers.size()) {
+				Collections.shuffle(boxsWrappers.subList(startSubListIndex, endSubListIndex));
 			}
-		} else {
-			totalType1Layers++;
+			for (int j = 0; j < palletsNeed; j++) {
+				startSubListIndex = oneLayerType1Capacity * (layer * palletsNeed + j);
+				if (startSubListIndex >= boxsWrappers.size()) {
+					break layers;
+				}
+				endSubListIndex = oneLayerType1Capacity * (layer * palletsNeed + j + 1);
+				if (endSubListIndex > boxsWrappers.size()) {
+					endSubListIndex = boxsWrappers.size();
+				}
+				List<BoxWrapper> subListLayerPallete = boxsWrappers.subList(startSubListIndex, endSubListIndex);
+				if (subListLayerPallete.size() < oneLayerType1Capacity
+						&& subListLayerPallete.stream().allMatch(bw -> bw.isVirtual())) {
+					LOG.debug("This is last layer, without real TYPE1 boxs");
+					subListLayerPallete = demultiplexAndPack(currentZ, subListLayerPallete);
+				} else {
+					calculateCoordinats(pallets[j], currentZ, subListLayerPallete);
+				}
+				calcCoordinatsInternalBoxes(currentZ, subListLayerPallete);
+				pallets[j].getBoxsInternal().addAll(subListLayerPallete);
 
+				LOG.debug("Pallete: {} layer: {}", pallets[j].getName(), layer + 1);
+				subListLayerPallete.stream()
+						.map(bw -> bw.getName() + " weight:" + bw.getWeight() + "---x1:" + bw.getXyz()[0] + " y1:"
+								+ bw.getXyz()[1] + " z1:" + bw.getXyz()[2] + " x2:" + bw.getXyz()[3] + " y2:"
+								+ bw.getXyz()[4] + " z2:" + bw.getXyz()[5])
+						.forEach(LOG::debug);
+			}
+			currentZ += BoxType.TYPE1.getHeight();
 		}
-		if (boxsWrappers.stream().skip(boxsWrappers.size() - unfullType1LayerBoxsCount)
-				.anyMatch(bw -> !bw.isVirtual())) {
-			LOG.debug("Use only Type1 Layers, last layer has real box type1 (cannot unboxing)");
-		} else
-		// TODO
-		if (unfullType1LayerBoxsCount >= oneLayerType1Capacity / 2 + 1) {
 
-			LOG.debug("Use only Type1 Layers, last layer has more then half box type1");
+		return pallets;
+	}
+
+	private void calcCoordinatsInternalBoxes(int currentZ, List<BoxWrapper> subListLayerPallete) {
+		for (BoxWrapper bw : subListLayerPallete) {
+			if (!bw.getBoxsInternal().isEmpty()) {
+				LOG.debug("Calculate coordinats of internal boxes for {} wth names:{}", bw.getName(),
+						bw.getBoxsInternal().stream().map(BoxWrapper::getName).collect(Collectors.joining(",")));
+				calculateCoordinats(bw, currentZ, bw.getBoxsInternal());
+				calcCoordinatsInternalBoxes(currentZ, bw.getBoxsInternal());
+			}
 		}
+	}
+
+	private List<BoxWrapper> demultiplexAndPack(int currentZ, List<BoxWrapper> boxs) {
+		// Specific logic without changes basic box types
+		BoxType startInternalBoxType = boxs.get(0).getBoxsInternal().get(0).getBoxType();
+		BoxType endInternalBoxType = BoxType.TYPE_BLOCK_LAST_LAYER;
+		BoxType externalBoxType = BoxType.LAST_LAYER;
+
+		endInternalBoxType.setHeight(startInternalBoxType.getHeight());
+		endInternalBoxType.setWidth(startInternalBoxType.getWidth());
+		endInternalBoxType.setLength(startInternalBoxType.getLength());
+
+		int heightExternalBox = 100 * IntStream
+				.of(startInternalBoxType.getHeight(), startInternalBoxType.getWidth(), startInternalBoxType.getLength())
+				.min().getAsInt();
+		externalBoxType.setHeight(heightExternalBox);
+		externalBoxType.setLength(BoxType.PALETTE.getTotalPozitionOnLength() * BoxType.TYPE1.getLength());
+		externalBoxType.setWidth(BoxType.PALETTE.getTotalPozitionOnWidth() * BoxType.TYPE1.getWidth());
+
+		optimalPackStrategy.selectOptimalVectorForInternalBox(externalBoxType, endInternalBoxType);
+		boxs = boxs.stream().flatMap(bw -> bw.getBoxsInternal().stream()).collect(Collectors.toList());
+		boxs.forEach(bw -> {
+			bw.setBoxType(endInternalBoxType);
+			bw.setIncluded(false);
+		});
+
+		BoxWrapper lastLayer = new BoxWrapper(new Box("lastLayer", externalBoxType, 0, boxs.get(0).getDestination()));
+		lastLayer.setVirtual(true);
+		lastLayer.getXyz()[0] = 0;
+		lastLayer.getXyz()[1] = 0;
+		lastLayer.getXyz()[2] = currentZ;
+		calculateCoordinats(lastLayer, currentZ, boxs);
+
+		return boxs;
 	}
 
 	private BoxWrapper[] buildPallets(List<BoxWrapper> boxsWrappers, int palletsNeed) {

@@ -2,6 +2,8 @@ package org.innovecs.services.impl;
 
 import java.util.Arrays;
 
+import javax.annotation.PostConstruct;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.innovecs.models.BoxType;
@@ -105,5 +107,13 @@ public class OptimalPackStrategyImpl implements OptimalPackStrategy {
 		default:
 			LOG.error("Mistake in logic for rotation box");
 		}
+	}
+
+	@PostConstruct
+	private void init() {
+		// rotate models to grid packaging
+		selectOptimalVectorForInternalBox(BoxType.PALETTE, BoxType.TYPE1);
+		selectOptimalVectorForInternalBox(BoxType.TYPE1, BoxType.TYPE2);
+		selectOptimalVectorForInternalBox(BoxType.TYPE2, BoxType.TYPE3);
 	}
 }

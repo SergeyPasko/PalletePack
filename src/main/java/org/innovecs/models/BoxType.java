@@ -9,8 +9,11 @@ public enum BoxType {
 	TYPE1(Constants.BOX_TYPE1_WIDTH, Constants.BOX_TYPE1_LENGTH, Constants.BOX_TYPE1_HEIGHT), 
 	TYPE2(Constants.BOX_TYPE2_WIDTH, Constants.BOX_TYPE2_LENGTH, Constants.BOX_TYPE2_HEIGHT),
 	TYPE3(Constants.BOX_TYPE3_WIDTH, Constants.BOX_TYPE3_LENGTH, Constants.BOX_TYPE3_HEIGHT), 
-	PALETTE(Constants.PALLETE_WIDTH, Constants.PALLETE_LENGTH, Constants.PALLETE_MAXHEIGHT);
-
+	PALETTE(Constants.PALLETE_WIDTH, Constants.PALLETE_LENGTH, Constants.PALLETE_MAXHEIGHT),
+	//Mock types for universal logic
+	LAST_LAYER(-1,-1,-1),
+	TYPE_BLOCK_LAST_LAYER(-1,-1,-1);
+		
 	private int width;
 	private int length;
 	private int height;
