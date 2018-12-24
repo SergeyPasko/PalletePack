@@ -92,6 +92,8 @@ public class PackServiceImpl implements PackService {
 				}
 				calcCoordinatsInternalBoxes(currentZ, subListLayerPallete);
 				pallets[j].getBoxsInternal().addAll(subListLayerPallete);
+				pallets[j].setWeight(
+						pallets[j].getWeight() + subListLayerPallete.stream().mapToInt(BoxWrapper::getWeight).sum());
 
 				LOG.debug("Pallete: {} layer: {}", pallets[j].getName(), layer + 1);
 				subListLayerPallete.stream()
@@ -159,6 +161,8 @@ public class PackServiceImpl implements PackService {
 			bw.getXyz()[0] = 0;
 			bw.getXyz()[1] = 0;
 			bw.getXyz()[2] = 0;
+			bw.setWeight(0);
+			bw.setVirtual(true);
 			pallets[i] = bw;
 		}
 		return pallets;

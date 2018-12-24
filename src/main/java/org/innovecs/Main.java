@@ -35,7 +35,9 @@ public class Main implements CommandLineRunner {
 	public void run(String... args) {
 		List<Box> boxs = fileService.readBoxFile("src\\main\\resources\\input.csv");
 		Map<String, List<Box>> boxesByDestinations = boxs.stream().collect(Collectors.groupingBy(Box::getDestination));
-		Map<String, List<BoxWrapper>> result = boxesByDestinations.values().stream().flatMap(b -> packService.calculatePack(b).stream())
+		Map<String, List<BoxWrapper>> result = boxesByDestinations.values().stream()
+				.flatMap(b -> packService.calculatePack(b).stream())
 				.collect(Collectors.groupingBy(BoxWrapper::getDestination));
+		fileService.writePositonsBoxFile("output.psk", result);
 	}
 }
