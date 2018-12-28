@@ -98,14 +98,15 @@ public class BoxPackagingSampleApp extends Application {
 	private static final double CAMERA_INITIAL_DISTANCE = -3000;
 	private static final double CAMERA_INITIAL_X_ANGLE = 70.0;
 	private static final double CAMERA_INITIAL_Y_ANGLE = 180.0;
-	private static final double CAMERA_INITIAL_Z_ANGLE = 45.0;
+	private static final double CAMERA_INITIAL_Z_ANGLE = 225.0;
 	private static final double CAMERA_NEAR_CLIP = 0.1;
 	private static final double CAMERA_FAR_CLIP = 10000.0;
 	private static final double CONTROL_MULTIPLIER = 0.1;
 	private static final double SHIFT_MULTIPLIER = 10.0;
 	private static final double MOUSE_SPEED = 0.1;
 	private static final double ROTATION_SPEED = 1.0;
-	private static final double TRACK_SPEED = 0.3;
+	private static final double TRACK_SPEED = 1.0;
+	private static final double SCALE_SPEED = 10.0;
 
 	double mousePosX;
 	double mousePosY;
@@ -186,7 +187,7 @@ public class BoxPackagingSampleApp extends Application {
 							cameraXform.rx.getAngle() + mouseDeltaY * MOUSE_SPEED * modifier * ROTATION_SPEED);
 				} else if (me.isSecondaryButtonDown()) {
 					double z = camera.getTranslateZ();
-					double newZ = z + mouseDeltaX * MOUSE_SPEED * modifier;
+					double newZ = z + SCALE_SPEED * mouseDeltaX * MOUSE_SPEED * modifier;
 					camera.setTranslateZ(newZ);
 				} else if (me.isMiddleButtonDown()) {
 					cameraXform2.t.setX(cameraXform2.t.getX() + mouseDeltaX * MOUSE_SPEED * modifier * TRACK_SPEED);
@@ -262,7 +263,7 @@ public class BoxPackagingSampleApp extends Application {
 			Xform boxXform = new Xform();
 			int[] xyz = bw.getXyz();
 			BoxType bt = bw.getBoxType();
-			Box boxGr = new Box(bt.getLength(), bt.getWidth(), bt.getHeight());
+			Box boxGr = new Box(xyz[3] - xyz[0], xyz[4] - xyz[1], xyz[5] - xyz[2]);
 			if (lineCheckBox.isSelected()) {
 				boxGr.setDrawMode(DrawMode.LINE);
 			}
@@ -277,12 +278,13 @@ public class BoxPackagingSampleApp extends Application {
 				boxGr.setMaterial(redMaterial);
 				break;
 			case TYPE2:
-			case TYPE_BLOCK_LAST_LAYER:
+			case TYPE2_BLOCK_LAST_LAYER:
 				if (!type2CheckBox.isSelected())
 					continue;
 				boxGr.setMaterial(brownMaterial);
 				break;
 			case TYPE3:
+			case TYPE3_BLOCK_LAST_LAYER:
 				if (!type3CheckBox.isSelected())
 					continue;
 				boxGr.setMaterial(greyMaterial);
@@ -291,7 +293,7 @@ public class BoxPackagingSampleApp extends Application {
 				throw new RuntimeException("Wrong box info input");
 			}
 
-			boxXform.setTranslate(xyz[0] + bt.getLength() / 2, xyz[1] + bt.getWidth() / 2, xyz[2] + bt.getHeight() / 2);
+			boxXform.setTranslate((xyz[3] + xyz[0]) / 2, (xyz[4] + xyz[1]) / 2, (xyz[5] + xyz[2]) / 2);
 			mainXform.getChildren().add(boxXform);
 			boxXform.getChildren().add(boxGr);
 		}
@@ -351,6 +353,8 @@ public class BoxPackagingSampleApp extends Application {
 			public void handle(final ActionEvent e) {
 				FileChooser fileChooser = new FileChooser();
 				fileChooser.setTitle("Open Boxs File");
+				fileChooser.getExtensionFilters()
+						.add(new FileChooser.ExtensionFilter("Spesial csv or psk", "*.csv", "*.psk"));
 				fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Only special csv", "*.csv"));
 				fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Only special psk", "*.psk"));
 				File file = fileChooser.showOpenDialog(primaryStage);

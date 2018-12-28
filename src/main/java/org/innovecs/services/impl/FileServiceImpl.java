@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class FileServiceImpl implements FileService {
+	private static final String TYPE = " type: ";
 	private static final String END_XYZ = ")";
 	private static final String X1_Y1_Z1_X2_Y2_Z2 = " ([x1, y1, z1, x2, y2, z2])=(";
 	private static final String WEIGHT = " weight=";
@@ -91,8 +92,12 @@ public class FileServiceImpl implements FileService {
 	private void appendBoxInfo(StringBuilder sb, BoxWrapper boxs, String linerCur) {
 		linerCur += TABULATOR;
 		for (BoxWrapper bw : boxs.getBoxsInternal()) {
-			sb.append(linerCur + BOX + bw.getName() + (bw.isVirtual() ? MULTIPLEXED : "") + WEIGHT + bw.getWeight()
-					+ X1_Y1_Z1_X2_Y2_Z2 + Arrays.toString(bw.getXyz()) + END_XYZ + LINE_SEPARATOR);
+			sb.append(linerCur + BOX + bw.getName());
+			sb.append(bw.isVirtual() ? MULTIPLEXED : "");
+			sb.append(TYPE + bw.getBoxType().name().replace("_BLOCK_LAST_LAYER", ""));
+			sb.append(WEIGHT + bw.getWeight());
+			sb.append(X1_Y1_Z1_X2_Y2_Z2 + Arrays.toString(bw.getXyz()) + END_XYZ);
+			sb.append(LINE_SEPARATOR);
 			appendBoxInfo(sb, bw, linerCur);
 		}
 	}
@@ -145,41 +150,47 @@ public class FileServiceImpl implements FileService {
 					BoxWrapper palleta = new BoxWrapper(name, BoxType.PALETTE, weight, dest);
 					palleta.setBoxsInternal(type1);
 					pallets.add(palleta);
-				} else if (line.contains(TABULATOR + TABULATOR)) {
-					type2 = new ArrayList<>();
-					String name = getSubst(line, BOX, WEIGHT);
-					boolean isVirtual = false;
-					if (name.contains(MULTIPLEXED)) {
-						isVirtual = true;
-						name = name.replaceAll(MULTIPLEXED, "");
-					}
-					int weight = Integer.parseInt(getSubst(line, WEIGHT, X1_Y1_Z1_X2_Y2_Z2));
-					BoxWrapper bw = new BoxWrapper(name, BoxType.TYPE1, weight, dest);
-					bw.setVirtual(isVirtual);
-					bw.setBoxsInternal(type2);
-					int[] xyz = new int[6];
-					// TODO
-					System.out.println(getSubst(line, X1_Y1_Z1_X2_Y2_Z2 + "[", "]" + END_XYZ));
-					String[] x1y1z1x2y2z2 = getSubst(line, X1_Y1_Z1_X2_Y2_Z2 + "[", "]" + END_XYZ).split(", ");
-					System.out.println(x1y1z1x2y2z2);
-					for (int i = 0; i < 6; i++) {
-						xyz[i] = Integer.parseInt(x1y1z1x2y2z2[i]);
-					}
-					bw.setXyz(xyz);
-					type1.add(bw);
+				} else if (line.startsWith(TABULATOR + TABULATOR + BOX)) {
+					type2 = readBoxWrapper(type1, dest, line);
+				} else if (line.startsWith(TABULATOR + TABULATOR + TABULATOR + BOX)) {
+					type3 = readBoxWrapper(type2, dest, line);
+				} else if (line.startsWith(TABULATOR + TABULATOR + TABULATOR + TABULATOR + BOX)) {
+					readBoxWrapper(type3, dest, line);
 				}
 			}
-			System.out.println(boxs);
 		} catch (FileNotFoundException e) {
 			LOG.error("Cannot find file {}", fileName);
 		} catch (Exception e) {
+			e.printStackTrace();
 			LOG.error("Incorrect file {} structure ", fileName);
 		}
 		return boxs;
 	}
 
+	private List<BoxWrapper> readBoxWrapper(List<BoxWrapper> typeExternal, String dest, String line) {
+		String name = getSubst(line, BOX, TYPE);
+		BoxType boxTypeInternal = BoxType.valueOf(getSubst(line, TYPE, WEIGHT));
+		boolean isVirtual = false;
+		if (name.contains(MULTIPLEXED)) {
+			isVirtual = true;
+			name = name.replaceAll(MULTIPLEXED, "");
+		}
+		int weight = Integer.parseInt(getSubst(line, WEIGHT, X1_Y1_Z1_X2_Y2_Z2));
+		BoxWrapper bw = new BoxWrapper(name, boxTypeInternal, weight, dest);
+		bw.setVirtual(isVirtual);
+		int[] xyz = new int[6];
+		String[] x1y1z1x2y2z2 = getSubst(line, X1_Y1_Z1_X2_Y2_Z2 + "[", "]" + END_XYZ).split(", ");
+		for (int i = 0; i < 6; i++) {
+			xyz[i] = Integer.parseInt(x1y1z1x2y2z2[i]);
+		}
+
+		bw.setXyz(xyz);
+		typeExternal.add(bw);
+		return bw.getBoxsInternal();
+	}
+
 	private String getSubst(String line, String str1, String str2) {
-		return line.substring(line.indexOf(str1) + str1.length(), line.indexOf(str2));
+		return line.substring(line.indexOf(str1) + str1.length(), line.lastIndexOf(str2));
 	}
 
 }

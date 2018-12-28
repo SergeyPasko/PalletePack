@@ -111,7 +111,7 @@ public class PackServiceImpl implements PackService {
 	private void calcCoordinatsInternalBoxes(int currentZ, List<BoxWrapper> subListLayerPallete) {
 		for (BoxWrapper bw : subListLayerPallete) {
 			if (!bw.getBoxsInternal().isEmpty()) {
-				LOG.debug("Calculate coordinats of internal boxes for {} wth names:{}", bw.getName(),
+				LOG.debug("Calculate coordinats of internal boxes for {} with names:{}", bw.getName(),
 						bw.getBoxsInternal().stream().map(BoxWrapper::getName).collect(Collectors.joining(",")));
 				calculateCoordinats(bw, currentZ, bw.getBoxsInternal());
 				calcCoordinatsInternalBoxes(currentZ, bw.getBoxsInternal());
@@ -121,26 +121,22 @@ public class PackServiceImpl implements PackService {
 
 	private List<BoxWrapper> demultiplexAndPack(int currentZ, List<BoxWrapper> boxs) {
 		// Specific logic without changes basic box types
-		BoxType startInternalBoxType = boxs.get(0).getBoxsInternal().get(0).getBoxType();
-		BoxType endInternalBoxType = BoxType.TYPE_BLOCK_LAST_LAYER;
+		BoxType type2llBoxType = BoxType.TYPE2_BLOCK_LAST_LAYER;
+		BoxType type3llBoxType = BoxType.TYPE3_BLOCK_LAST_LAYER;
 		BoxType externalBoxType = BoxType.LAST_LAYER;
 
-		endInternalBoxType.setHeight(startInternalBoxType.getHeight());
-		endInternalBoxType.setWidth(startInternalBoxType.getWidth());
-		endInternalBoxType.setLength(startInternalBoxType.getLength());
-
-		int heightExternalBox = 100 * IntStream
-				.of(startInternalBoxType.getHeight(), startInternalBoxType.getWidth(), startInternalBoxType.getLength())
-				.min().getAsInt();
+		int heightExternalBox = 7 * IntStream
+				.of(type2llBoxType.getHeight(), type2llBoxType.getWidth(), type2llBoxType.getLength()).min().getAsInt();
 		externalBoxType.setHeight(heightExternalBox);
 		externalBoxType.setLength(BoxType.PALETTE.getTotalPozitionOnLength() * BoxType.TYPE1.getLength());
 		externalBoxType.setWidth(BoxType.PALETTE.getTotalPozitionOnWidth() * BoxType.TYPE1.getWidth());
 
-		optimalPackStrategy.selectOptimalVectorForInternalBox(externalBoxType, endInternalBoxType);
+		optimalPackStrategy.selectOptimalVectorForInternalBox(externalBoxType, type2llBoxType);
+		optimalPackStrategy.selectOptimalVectorForInternalBox(type2llBoxType, type3llBoxType);
 		boxs = boxs.stream().flatMap(bw -> bw.getBoxsInternal().stream()).collect(Collectors.toList());
 		boxs.forEach(bw -> {
-			bw.setBoxType(endInternalBoxType);
-			bw.setIncluded(false);
+			bw.setBoxType(type2llBoxType);
+			bw.getBoxsInternal().forEach(ibw -> ibw.setBoxType(type3llBoxType));
 		});
 
 		BoxWrapper lastLayer = new BoxWrapper(new Box("lastLayer", externalBoxType, 0, boxs.get(0).getDestination()));
@@ -149,6 +145,8 @@ public class PackServiceImpl implements PackService {
 		lastLayer.getXyz()[1] = 0;
 		lastLayer.getXyz()[2] = currentZ;
 		calculateCoordinats(lastLayer, currentZ, boxs);
+
+		// endInternalBoxType = BoxType.TYPE3_BLOCK_LAST_LAYER;
 
 		return boxs;
 	}
