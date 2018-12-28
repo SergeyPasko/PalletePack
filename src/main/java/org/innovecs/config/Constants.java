@@ -22,8 +22,5 @@ public class Constants {
 	public static int PALLETE_MAXWEIGHT = 1000;
 
 	public static String CSV_FILE_DELIMETR = ";";
-	public static String LINE_SEPARATOR = System.getProperty("line.separator");
-	public static String TABULATOR = "--->";
-
 
 }

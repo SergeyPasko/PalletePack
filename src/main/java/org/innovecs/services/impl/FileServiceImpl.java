@@ -1,7 +1,5 @@
 package org.innovecs.services.impl;
 
-import static org.innovecs.config.Constants.*;
-
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -29,10 +28,22 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class FileServiceImpl implements FileService {
+	private static final String END_XYZ = ")";
+	private static final String X1_Y1_Z1_X2_Y2_Z2 = " ([x1, y1, z1, x2, y2, z2])=(";
+	private static final String WEIGHT = " weight=";
+	private static final String MULTIPLEXED = "(multiplexed)";
+	private static final String BOX = "Box: ";
+	private static final String PALLETA = "PALLETA: ";
+	private static final String PALLETS = " pallets=";
+	private static final String TOTAL_WEIGHT = " total weight= ";
+	private static final String DESTINATION = "DESTINATION: ";
+	public static String LINE_SEPARATOR = System.getProperty("line.separator");
+	public static String TABULATOR = "--->";
 	private static final Logger LOG = LogManager.getLogger(FileServiceImpl.class);
 
 	@Override
 	public List<Box> readBoxFile(String fileName) {
+		validateFileType(fileName, "csv");
 		ArrayList<Box> boxs = new ArrayList<>();
 		try (Scanner sc = new Scanner(new File(fileName))) {
 			int lineNumb = 0;
@@ -47,6 +58,12 @@ public class FileServiceImpl implements FileService {
 		return boxs;
 	}
 
+	private void validateFileType(String fileName, String type) {
+		if (!fileName.endsWith(type)) {
+			LOG.warn("Incorrect file {} type, must be {}", fileName, type);
+		}
+	}
+
 	@Override
 	public void writePositonsBoxFile(String filename, Map<String, List<BoxWrapper>> resultPackBoxes) {
 		Path path = Paths.get(filename);
@@ -54,11 +71,11 @@ public class FileServiceImpl implements FileService {
 		for (String destination : resultPackBoxes.keySet()) {
 			List<BoxWrapper> pallets = resultPackBoxes.get(destination);
 			int totalWeight = pallets.stream().mapToInt(BoxWrapper::getWeight).sum();
-			sb.append("DESTINATION: " + destination + " total weight= " + totalWeight + " pallets=" + pallets.size()
-					+ LINE_SEPARATOR);
+			sb.append(
+					DESTINATION + destination + TOTAL_WEIGHT + totalWeight + PALLETS + pallets.size() + LINE_SEPARATOR);
 			for (BoxWrapper palleta : pallets) {
-				sb.append(TABULATOR + "PALLETA: " + palleta.getName() + " total weight= " + palleta.getWeight()
-						+ LINE_SEPARATOR);
+				sb.append(
+						TABULATOR + PALLETA + palleta.getName() + TOTAL_WEIGHT + palleta.getWeight() + LINE_SEPARATOR);
 				appendBoxInfo(sb, palleta, TABULATOR);
 			}
 
@@ -74,8 +91,8 @@ public class FileServiceImpl implements FileService {
 	private void appendBoxInfo(StringBuilder sb, BoxWrapper boxs, String linerCur) {
 		linerCur += TABULATOR;
 		for (BoxWrapper bw : boxs.getBoxsInternal()) {
-			sb.append(linerCur + "Box: " + bw.getName() + (bw.isVirtual() ? "(multiplexed)" : "") + " weight="
-					+ bw.getWeight() + " ([x1, y1, z1, x2, y2, z2])=(" + Arrays.toString(bw.getXyz()) + ")" + LINE_SEPARATOR);
+			sb.append(linerCur + BOX + bw.getName() + (bw.isVirtual() ? MULTIPLEXED : "") + WEIGHT + bw.getWeight()
+					+ X1_Y1_Z1_X2_Y2_Z2 + Arrays.toString(bw.getXyz()) + END_XYZ + LINE_SEPARATOR);
 			appendBoxInfo(sb, bw, linerCur);
 		}
 	}
@@ -103,6 +120,66 @@ public class FileServiceImpl implements FileService {
 			return;
 		}
 		boxs.add(new Box(values[0], boxType, weight, values[3]));
+	}
+
+	@Override
+	public Map<String, List<BoxWrapper>> readPskFile(String fileName) {
+		validateFileType(fileName, "psk");
+		Map<String, List<BoxWrapper>> boxs = new HashMap<>();
+		try (Scanner sc = new Scanner(new File(fileName))) {
+			List<BoxWrapper> pallets = new ArrayList<>();
+			List<BoxWrapper> type1 = new ArrayList<>();
+			List<BoxWrapper> type2 = new ArrayList<>();
+			List<BoxWrapper> type3 = new ArrayList<>();
+			String dest = null;
+			while (sc.hasNextLine()) {
+				String line = sc.nextLine().trim();
+				if (line.startsWith(DESTINATION)) {
+					dest = getSubst(line, DESTINATION, TOTAL_WEIGHT);
+					pallets = new ArrayList<>();
+					boxs.put(dest, pallets);
+				} else if (line.contains(PALLETA)) {
+					type1 = new ArrayList<>();
+					String name = getSubst(line, PALLETA, TOTAL_WEIGHT);
+					int weight = Integer.parseInt(line.substring(line.indexOf(TOTAL_WEIGHT) + TOTAL_WEIGHT.length()));
+					BoxWrapper palleta = new BoxWrapper(name, BoxType.PALETTE, weight, dest);
+					palleta.setBoxsInternal(type1);
+					pallets.add(palleta);
+				} else if (line.contains(TABULATOR + TABULATOR)) {
+					type2 = new ArrayList<>();
+					String name = getSubst(line, BOX, WEIGHT);
+					boolean isVirtual = false;
+					if (name.contains(MULTIPLEXED)) {
+						isVirtual = true;
+						name = name.replaceAll(MULTIPLEXED, "");
+					}
+					int weight = Integer.parseInt(getSubst(line, WEIGHT, X1_Y1_Z1_X2_Y2_Z2));
+					BoxWrapper bw = new BoxWrapper(name, BoxType.TYPE1, weight, dest);
+					bw.setVirtual(isVirtual);
+					bw.setBoxsInternal(type2);
+					int[] xyz = new int[6];
+					// TODO
+					System.out.println(getSubst(line, X1_Y1_Z1_X2_Y2_Z2 + "[", "]" + END_XYZ));
+					String[] x1y1z1x2y2z2 = getSubst(line, X1_Y1_Z1_X2_Y2_Z2 + "[", "]" + END_XYZ).split(", ");
+					System.out.println(x1y1z1x2y2z2);
+					for (int i = 0; i < 6; i++) {
+						xyz[i] = Integer.parseInt(x1y1z1x2y2z2[i]);
+					}
+					bw.setXyz(xyz);
+					type1.add(bw);
+				}
+			}
+			System.out.println(boxs);
+		} catch (FileNotFoundException e) {
+			LOG.error("Cannot find file {}", fileName);
+		} catch (Exception e) {
+			LOG.error("Incorrect file {} structure ", fileName);
+		}
+		return boxs;
+	}
+
+	private String getSubst(String line, String str1, String str2) {
+		return line.substring(line.indexOf(str1) + str1.length(), line.indexOf(str2));
 	}
 
 }

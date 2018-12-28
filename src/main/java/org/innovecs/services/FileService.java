@@ -13,6 +13,8 @@ public interface FileService {
 
 	List<Box> readBoxFile(String fileName);
 
+	Map<String, List<BoxWrapper>> readPskFile(String fileName);
+
 	void writePositonsBoxFile(String string, Map<String, List<BoxWrapper>> result);
 
 }
