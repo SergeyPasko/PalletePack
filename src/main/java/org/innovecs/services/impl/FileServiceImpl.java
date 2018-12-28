@@ -173,7 +173,7 @@ public class FileServiceImpl implements FileService {
 		boolean isVirtual = false;
 		if (name.contains(MULTIPLEXED)) {
 			isVirtual = true;
-			name = name.replaceAll(MULTIPLEXED, "");
+			name = name.replace((CharSequence) MULTIPLEXED, (CharSequence) "");
 		}
 		int weight = Integer.parseInt(getSubst(line, WEIGHT, X1_Y1_Z1_X2_Y2_Z2));
 		BoxWrapper bw = new BoxWrapper(name, boxTypeInternal, weight, dest);
