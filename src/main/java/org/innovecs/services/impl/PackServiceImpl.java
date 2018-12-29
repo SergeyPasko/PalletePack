@@ -125,13 +125,17 @@ public class PackServiceImpl implements PackService {
 		BoxType type3llBoxType = BoxType.TYPE3_BLOCK_LAST_LAYER;
 		BoxType externalBoxType = BoxType.LAST_LAYER;
 
-		int heightExternalBox = 7 * IntStream
+		int heightExternalBox = IntStream
 				.of(type2llBoxType.getHeight(), type2llBoxType.getWidth(), type2llBoxType.getLength()).min().getAsInt();
 		externalBoxType.setHeight(heightExternalBox);
 		externalBoxType.setLength(BoxType.PALETTE.getTotalPozitionOnLength() * BoxType.TYPE1.getLength());
 		externalBoxType.setWidth(BoxType.PALETTE.getTotalPozitionOnWidth() * BoxType.TYPE1.getWidth());
 
 		optimalPackStrategy.selectOptimalVectorForInternalBox(externalBoxType, type2llBoxType);
+		if (externalBoxType.getCapacity() < boxs.size()) {
+			externalBoxType.setHeight(37 * heightExternalBox);
+			optimalPackStrategy.selectOptimalVectorForInternalBox(externalBoxType, type2llBoxType);
+		}
 		optimalPackStrategy.selectOptimalVectorForInternalBox(type2llBoxType, type3llBoxType);
 		boxs = boxs.stream().flatMap(bw -> bw.getBoxsInternal().stream()).collect(Collectors.toList());
 		boxs.forEach(bw -> {
@@ -145,8 +149,6 @@ public class PackServiceImpl implements PackService {
 		lastLayer.getXyz()[1] = 0;
 		lastLayer.getXyz()[2] = currentZ;
 		calculateCoordinats(lastLayer, currentZ, boxs);
-
-		// endInternalBoxType = BoxType.TYPE3_BLOCK_LAST_LAYER;
 
 		return boxs;
 	}
