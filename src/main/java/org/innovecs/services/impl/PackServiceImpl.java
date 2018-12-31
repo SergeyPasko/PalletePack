@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -38,6 +39,15 @@ public class PackServiceImpl implements PackService {
 		int palletsNeed = totalPalletsNeed(boxsWrappers);
 
 		return Arrays.asList(packToPallets(boxsWrappers, palletsNeed));
+	}
+
+	@Override
+	public Map<String, List<BoxWrapper>> allPack(List<Box> boxs) {
+		Map<String, List<org.innovecs.models.Box>> boxesByDestinations = boxs.stream()
+				.collect(Collectors.groupingBy(org.innovecs.models.Box::getDestination));
+
+		return boxesByDestinations.values().stream().flatMap(b -> calculatePack(b).stream())
+				.collect(Collectors.groupingBy(BoxWrapper::getDestination));
 	}
 
 	private List<BoxWrapper> multiplexBoxsToType1(List<Box> boxs) {

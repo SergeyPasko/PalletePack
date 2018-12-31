@@ -23,6 +23,8 @@ import org.innovecs.models.BoxWrapper;
 import org.innovecs.services.FileService;
 import org.springframework.stereotype.Service;
 
+import static org.innovecs.config.Constants.*;
+
 /**
  * @author spasko
  */
@@ -38,7 +40,6 @@ public class FileServiceImpl implements FileService {
 	private static final String PALLETS = " pallets=";
 	private static final String TOTAL_WEIGHT = " total weight= ";
 	private static final String DESTINATION = "DESTINATION: ";
-	public static String LINE_SEPARATOR = System.getProperty("line.separator");
 	public static String TABULATOR = "--->";
 	private static final Logger LOG = LogManager.getLogger(FileServiceImpl.class);
 

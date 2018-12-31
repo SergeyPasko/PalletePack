@@ -21,6 +21,7 @@ public class Constants {
 	public static int PALLETE_MAXHEIGHT = 700;//1500;
 	public static int PALLETE_MAXWEIGHT = 1000;
 
-	public static String CSV_FILE_DELIMETR = ";";
+	public static String CSV_FILE_DELIMETR = ";";	
+	public static String LINE_SEPARATOR = System.getProperty("line.separator");
 
 }

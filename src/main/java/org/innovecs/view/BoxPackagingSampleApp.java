@@ -33,7 +33,7 @@
 package org.innovecs.view;
 
 import java.io.File;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +49,8 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import javafx.application.Application;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.geometry.Orientation;
@@ -62,7 +64,10 @@ import javafx.scene.SubScene;
 import javafx.scene.control.Button;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
 import javafx.scene.control.ToolBar;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
@@ -72,6 +77,8 @@ import javafx.scene.shape.Box;
 import javafx.scene.shape.DrawMode;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+
+import static org.innovecs.config.Constants.*;
 
 /**
  *
@@ -88,12 +95,17 @@ public class BoxPackagingSampleApp extends Application {
 	final Xform cameraXform2 = new Xform();
 	final Xform cameraXform3 = new Xform();
 
-	CheckBox lineCheckBox;
-	CheckBox virtualCheckBox;
-	CheckBox type1CheckBox;
-	CheckBox type2CheckBox;
-	CheckBox type3CheckBox;
-	CheckBox borderCheckBox;
+	private CheckBox lineCheckBox;
+	private CheckBox virtualCheckBox;
+	private CheckBox type1CheckBox;
+	private CheckBox type2CheckBox;
+	private CheckBox type3CheckBox;
+	private CheckBox borderCheckBox;
+	private ComboBox<String> destinations = new ComboBox<>();
+	private ComboBox<String> pallets = new ComboBox<>();
+	private Label boxInfo = new Label();
+	private TreeItem<String> rootItem = new TreeItem<String>("Dummy");
+	private TreeView<String> tree = new TreeView<String>(rootItem);
 
 	private static final double CAMERA_INITIAL_DISTANCE = -3000;
 	private static final double CAMERA_INITIAL_X_ANGLE = 70.0;
@@ -125,14 +137,9 @@ public class BoxPackagingSampleApp extends Application {
 		if (fileName.endsWith("psk")) {
 			result = fileService.readPskFile(fileName);
 		} else {
-			List<org.innovecs.models.Box> boxs = new ArrayList<>();
-			boxs = fileService.readBoxFile(fileName);
-			Map<String, List<org.innovecs.models.Box>> boxesByDestinations = boxs.stream()
-					.collect(Collectors.groupingBy(org.innovecs.models.Box::getDestination));
-			result = boxesByDestinations.values().stream().flatMap(b -> packService.calculatePack(b).stream())
-					.collect(Collectors.groupingBy(BoxWrapper::getDestination));
+			List<org.innovecs.models.Box> boxs = fileService.readBoxFile(fileName);
+			result = packService.allPack(boxs);
 		}
-
 		return result;
 	}
 
@@ -201,16 +208,31 @@ public class BoxPackagingSampleApp extends Application {
 		scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
 			@Override
 			public void handle(KeyEvent event) {
+				double modifier = 1.0;
+
+				if (event.isControlDown()) {
+					modifier = CONTROL_MULTIPLIER;
+				}
+				if (event.isShiftDown()) {
+					modifier = SHIFT_MULTIPLIER;
+				}
+
 				switch (event.getCode()) {
-				case Z:
+				case P:
 					cameraXform2.t.setX(0.0);
 					cameraXform2.t.setY(0.0);
 					camera.setTranslateZ(CAMERA_INITIAL_DISTANCE);
 					cameraXform.ry.setAngle(CAMERA_INITIAL_Y_ANGLE);
 					cameraXform.rx.setAngle(CAMERA_INITIAL_X_ANGLE);
 					break;
-				case V:
-					moleculeGroup.setVisible(!moleculeGroup.isVisible());
+				case X:
+					cameraXform.rx.setAngle(cameraXform.rx.getAngle() + modifier * ROTATION_SPEED);
+					break;
+				case Y:
+					cameraXform.ry.setAngle(cameraXform.ry.getAngle() + modifier * ROTATION_SPEED);
+					break;
+				case Z:
+					cameraXform.rz.setAngle(cameraXform.rz.getAngle() + modifier * ROTATION_SPEED);
 					break;
 				default:
 					break;
@@ -236,8 +258,9 @@ public class BoxPackagingSampleApp extends Application {
 		final PhongMaterial palleteMaterial = new PhongMaterial();
 		palleteMaterial.setDiffuseColor(new Color(0.5, 0.5, 0.5, 0.1));
 		Xform boxXform = new Xform();
-		if (!borderCheckBox.isSelected())
+		if (!borderCheckBox.isSelected()) {
 			return;
+		}
 		Box boxGr = new Box(Constants.PALLETE_LENGTH, Constants.PALLETE_WIDTH, Constants.PALLETE_MAXHEIGHT);
 		if (lineCheckBox.isSelected()) {
 			boxGr.setDrawMode(DrawMode.LINE);
@@ -253,44 +276,57 @@ public class BoxPackagingSampleApp extends Application {
 		final PhongMaterial redMaterial = new PhongMaterial();
 		redMaterial.setDiffuseColor(new Color(1, 0, 0, 0.3));
 
-		final PhongMaterial brownMaterial = new PhongMaterial();
-		brownMaterial.setDiffuseColor(new Color(0, 1, 0, 0.3));
+		final PhongMaterial greenMaterial = new PhongMaterial();
+		greenMaterial.setDiffuseColor(new Color(0, 1, 0, 0.3));
+
+		final PhongMaterial blueMaterial = new PhongMaterial();
+		blueMaterial.setDiffuseColor(new Color(0, 0, 1, 0.3));
 
 		final PhongMaterial greyMaterial = new PhongMaterial();
-		greyMaterial.setDiffuseColor(new Color(0, 0, 1, 0.3));
+		greyMaterial.setDiffuseColor(new Color(0.5, 0.5, 0.5, 0.8));
+
+		TreeItem<String> selectedItem = tree.getSelectionModel().getSelectedItem();
+		String selectedBoxName = selectedItem == null ? null : selectedItem.getValue();
+
 		for (BoxWrapper bw : box.getBoxsInternal()) {
 			drawBoxes(bw, mainXform);
+			boolean isSelectedBox = bw.getName().equals(selectedBoxName);
+
 			Xform boxXform = new Xform();
 			int[] xyz = bw.getXyz();
 			BoxType bt = bw.getBoxType();
 			Box boxGr = new Box(xyz[3] - xyz[0], xyz[4] - xyz[1], xyz[5] - xyz[2]);
-			if (lineCheckBox.isSelected()) {
+			if (lineCheckBox.isSelected() && !isSelectedBox) {
 				boxGr.setDrawMode(DrawMode.LINE);
 			}
-			if (!virtualCheckBox.isSelected() && bw.isVirtual()) {
+			if (!virtualCheckBox.isSelected() && bw.isVirtual() && !isSelectedBox) {
 				boxGr.setVisible(false);
 			}
 
-			switch (bt) {
-			case TYPE1:
-				if (!type1CheckBox.isSelected())
-					continue;
-				boxGr.setMaterial(redMaterial);
-				break;
-			case TYPE2:
-			case TYPE2_BLOCK_LAST_LAYER:
-				if (!type2CheckBox.isSelected())
-					continue;
-				boxGr.setMaterial(brownMaterial);
-				break;
-			case TYPE3:
-			case TYPE3_BLOCK_LAST_LAYER:
-				if (!type3CheckBox.isSelected())
-					continue;
+			if (isSelectedBox && !lineCheckBox.isSelected()) {
 				boxGr.setMaterial(greyMaterial);
-				break;
-			default:
-				throw new RuntimeException("Wrong box info input");
+			} else {
+				switch (bt) {
+				case TYPE1:
+					if (!type1CheckBox.isSelected())
+						continue;
+					boxGr.setMaterial(redMaterial);
+					break;
+				case TYPE2:
+				case TYPE2_BLOCK_LAST_LAYER:
+					if (!type2CheckBox.isSelected())
+						continue;
+					boxGr.setMaterial(greenMaterial);
+					break;
+				case TYPE3:
+				case TYPE3_BLOCK_LAST_LAYER:
+					if (!type3CheckBox.isSelected())
+						continue;
+					boxGr.setMaterial(blueMaterial);
+					break;
+				default:
+					throw new RuntimeException("Wrong box info input");
+				}
 			}
 
 			boxXform.setTranslate((xyz[3] + xyz[0]) / 2, (xyz[4] + xyz[1]) / 2, (xyz[5] + xyz[2]) / 2);
@@ -320,13 +356,17 @@ public class BoxPackagingSampleApp extends Application {
 		BorderPane pane = new BorderPane();
 		pane.setCenter(scene);
 		Button buttonOpenFile = new Button("Load boxs info");
+		buttonOpenFile.setMinWidth(250);
 		Button saveFile = new Button("Save pack boxs info");
+		saveFile.setMinWidth(250);
 
-		ComboBox<String> destinations = new ComboBox<>();
-		ComboBox<String> pallets = new ComboBox<>();
+		destinations.setMinWidth(250);
 		destinations.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
+				if (destinations.getValue() == null) {
+					return;
+				}
 				pallets.getItems().clear();
 				List<BoxWrapper> boxs = result.get(destinations.getValue());
 				List<String> palls = boxs.stream().filter(bw -> BoxType.PALETTE.equals(bw.getBoxType()))
@@ -338,13 +378,26 @@ public class BoxPackagingSampleApp extends Application {
 			}
 		});
 
+		pallets.setMinWidth(250);
 		pallets.setOnAction(new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent e) {
 				if (pallets.getValue() == null) {
 					return;
 				}
-				drawPallete(destinations, pallets);
+				drawPallete();
+				rootItem.getChildren().clear();
+				List<BoxWrapper> boxs = result.get(destinations.getValue()).stream()
+						.filter(bw -> bw.getName().equals(pallets.getValue())).findFirst().get().getBoxsInternal();
+				addNodesToTreeView(boxs, rootItem);
+			}
+
+			private void addNodesToTreeView(List<BoxWrapper> boxs, TreeItem<String> rootItem) {
+				for (BoxWrapper bw : boxs) {
+					TreeItem<String> node = new TreeItem<String>(bw.getName());
+					addNodesToTreeView(bw.getBoxsInternal(), node);
+					rootItem.getChildren().add(node);
+				}
 			}
 		});
 
@@ -374,7 +427,7 @@ public class BoxPackagingSampleApp extends Application {
 		EventHandler<ActionEvent> redrawHandler = new EventHandler<ActionEvent>() {
 			@Override
 			public void handle(ActionEvent event) {
-				drawPallete(destinations, pallets);
+				drawPallete();
 			}
 		};
 
@@ -414,8 +467,52 @@ public class BoxPackagingSampleApp extends Application {
 				}
 			}
 		});
-		ToolBar toolBar = new ToolBar(buttonOpenFile, destinations, pallets, lineCheckBox, virtualCheckBox,
-				type1CheckBox, type2CheckBox, type3CheckBox, borderCheckBox, saveFile);
+
+		rootItem.setExpanded(true);
+		tree.setShowRoot(false);
+
+		tree.getSelectionModel().selectedItemProperty().addListener(new ChangeListener<TreeItem<String>>() {
+			@Override
+			public void changed(ObservableValue<? extends TreeItem<String>> observable, TreeItem<String> oldValue,
+					TreeItem<String> newValue) {
+				if (destinations.getValue() == null || pallets.getValue() == null) {
+					return;
+				}
+				drawPallete();
+				if (newValue == null) {
+					boxInfo.setText("");
+				} else {
+
+					String selectedBoxName = newValue.getValue();
+					List<BoxWrapper> boxs = result.get(destinations.getValue());
+					BoxWrapper box = boxs.stream().filter(bw -> pallets.getValue().equals(bw.getName()))
+							.filter(bw -> BoxType.PALETTE.equals(bw.getBoxType())).findFirst().get();
+
+					writeInfo(selectedBoxName, box);
+				}
+			}
+
+			private void writeInfo(String selectedBoxName, BoxWrapper box) {
+				StringBuilder sb = new StringBuilder();
+				for (BoxWrapper bw : box.getBoxsInternal()) {
+					if (bw.getName().equals(selectedBoxName)) {
+						sb.append(" name:" + bw.getName() + LINE_SEPARATOR);
+						sb.append(" type:" + bw.getBoxType() + LINE_SEPARATOR);
+						sb.append(" weight:" + bw.getWeight() + LINE_SEPARATOR);
+						sb.append(" xyz:" + Arrays.toString(bw.getXyz()));
+						boxInfo.setText(sb.toString());
+						return;
+					} else {
+						writeInfo(selectedBoxName, bw);
+					}
+				}
+			}
+		});
+
+		boxInfo.setMinWidth(250);
+
+		ToolBar toolBar = new ToolBar(buttonOpenFile, saveFile, destinations, pallets, lineCheckBox, virtualCheckBox,
+				type1CheckBox, type2CheckBox, type3CheckBox, borderCheckBox, tree, boxInfo);
 		toolBar.setOrientation(Orientation.VERTICAL);
 		pane.setLeft(toolBar);
 		pane.setPrefSize(300, 300);
@@ -436,7 +533,10 @@ public class BoxPackagingSampleApp extends Application {
 		context.getAutowireCapableBeanFactory().autowireBean(this);
 	}
 
-	private void drawPallete(ComboBox<String> destinations, ComboBox<String> pallets) {
+	private void drawPallete() {
+		if (destinations.getValue() == null || pallets.getValue() == null) {
+			return;
+		}
 		List<BoxWrapper> boxs = result.get(destinations.getValue());
 		BoxWrapper box = boxs.stream().filter(bw -> pallets.getValue().equals(bw.getName()))
 				.filter(bw -> BoxType.PALETTE.equals(bw.getBoxType())).findFirst().get();
