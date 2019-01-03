@@ -40,7 +40,7 @@ public class FileServiceImpl implements FileService {
 	private static final String PALLETS = " pallets=";
 	private static final String TOTAL_WEIGHT = " total weight= ";
 	private static final String DESTINATION = "DESTINATION: ";
-	public static String TABULATOR = "--->";
+	private static final String TABULATOR = "--->";
 	private static final Logger LOG = LogManager.getLogger(FileServiceImpl.class);
 
 	@Override
