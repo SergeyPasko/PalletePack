@@ -117,7 +117,7 @@ public class BoxPackagingSampleApp extends Application {
 	private static final double SHIFT_MULTIPLIER = 10.0;
 	private static final double MOUSE_SPEED = 0.1;
 	private static final double ROTATION_SPEED = 1.0;
-	private static final double TRACK_SPEED = 1.0;
+	private static final double TRACK_SPEED = 5.0;
 	private static final double SCALE_SPEED = 10.0;
 
 	double mousePosX;
@@ -197,8 +197,8 @@ public class BoxPackagingSampleApp extends Application {
 					double newZ = z + SCALE_SPEED * mouseDeltaX * MOUSE_SPEED * modifier;
 					camera.setTranslateZ(newZ);
 				} else if (me.isMiddleButtonDown()) {
-					cameraXform2.t.setX(cameraXform2.t.getX() + mouseDeltaX * MOUSE_SPEED * modifier * TRACK_SPEED);
-					cameraXform2.t.setY(cameraXform2.t.getY() + mouseDeltaY * MOUSE_SPEED * modifier * TRACK_SPEED);
+					cameraXform2.t.setX(cameraXform2.t.getX() - mouseDeltaX * MOUSE_SPEED * modifier * TRACK_SPEED);
+					cameraXform2.t.setY(cameraXform2.t.getY() - mouseDeltaY * MOUSE_SPEED * modifier * TRACK_SPEED);
 				}
 			}
 		});

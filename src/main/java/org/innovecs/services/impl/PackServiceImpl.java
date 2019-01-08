@@ -145,7 +145,10 @@ public class PackServiceImpl implements PackService {
 		if (externalBoxType.getCapacity() < boxs.size()) {
 			externalBoxType.setHeight(37 * heightExternalBox);
 			optimalPackStrategy.selectOptimalVectorForInternalBox(externalBoxType, type2llBoxType);
+		} else {
+			externalBoxType.setTotalPozitionOnHeight(37);
 		}
+		
 		optimalPackStrategy.selectOptimalVectorForInternalBox(type2llBoxType, type3llBoxType);
 		boxs = boxs.stream().flatMap(bw -> bw.getBoxsInternal().stream()).collect(Collectors.toList());
 		boxs.forEach(bw -> {
